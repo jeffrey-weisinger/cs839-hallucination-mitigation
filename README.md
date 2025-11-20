@@ -1,7 +1,12 @@
 # TSV-Guided Inference-Time Mitigation of Hallucinations in LLMs
 
-Course: CS 762: Advanced Deep Learning (University of Wisconsin-Madison)
+Course: CS 762: Advanced Deep Learning 
 
+(University of Wisconsin-Madison)
+
+## To-do and questions:
+
+In the original paper, the steering vector is inserted at layer 9 by default. They create a tsv for every layer initially but only train one specific layer at a time (-str_layer). But the detection calculate the centroids using the final layer. This would be find for detection, but if we are implement the prototype interpolation at later 9, we might need layer 9 prototype? We might want to save the prototype from the same layer where we are doing the steering?
 
 ## Overview
 
@@ -11,7 +16,7 @@ While the original TSV paper focuses on identifying hallucinations by analyzing 
 
 ### Key Features
 
-Plug-and-Play Mitigation: No fine-tuning required; works via PyTorch forward hooks.
+Plug-and-Play Mitigation: No fine-tuning required; works via PyTorch forward hooks (or tensorflow).
 
 Three Steering Strategies:
 
@@ -28,21 +33,25 @@ Supported Models: LLaMA-3.1, Qwen-2.5, GPT-2 (for testing).
 ### Clone the repository:
 
 git clone 
+
 cd 
 
 
 ### Create the environment:
 
 conda create -n tsv_mitigation python=3.10 -y
+
 conda activate tsv_mitigation
 
 
 ### Install dependencies:
 
-Install PyTorch (adjust for your CUDA version)
+Install PyTorch (adjust for CUDA version)
+
 conda install pytorch torchvision torchaudio pytorch-cuda=12.1 -c pytorch -c nvidia
 
 Install Hugging Face & utilities
+
 pip install transformers accelerate scipy numpy
 
 
@@ -50,15 +59,13 @@ pip install transformers accelerate scipy numpy
 
 1. Get the Vectors
 
-This repository requires trained TSV vectors (.pt files).
+This repository requires trained TSV vectors (tsv_vectors_layer_X.pt file).
 
-If you are working with the detection team, ask for the tsv_vectors_layer_X.pt file.
-
-If you want to test the pipeline immediately, the code will automatically generate Mock Data (Random Noise) if no file is provided.
+If we want to test the pipeline immediately, the code will automatically generate Mock Data (Random Noise) if no file is provided.
 
 2. Run the Mitigator
 
-The main entry point is main.py. You can configure the model and layer ID directly in the script.
+The main entry point is main.py, which can configure the model and layer ID directly in the script.
 
 python main.py
 
@@ -73,6 +80,15 @@ TSV_PATH = "tsv_vectors_layer_12.pt"    # Path to real vectors
 
 
 ## Methodology
+### Detection
+We implement a new lost equation with the repulsion loss:
+$$L_{total} = L_{original} + \lambda (\mu_T \cdot \mu_H)^2$$
+Thid can force the vectors to be orthogonal or opposite, make the prototype $\mu_T$ and $\mu_H$ to be as far apart as possible.
+
+This code should be in the tsv_main.py and save a final coordinates to tsv_vector.pt. 
+
+### Mitigation
+The mitigation.pt could read the tsv_vector.pt. 
 
 We implement three distinct strategies to modify the hidden state $h_l$ at layer $l$:
 
@@ -106,13 +122,18 @@ Use case: Strongest intervention for correcting severe hallucinations.
 ## Repository Structure
 
 .
-├── main.py           # Entry point: Loads model and runs generation
 
-├── mitigation.py     # Core Logic: The TSVMitigator class and PyTorch hooks
+├── eval_mitigation.py  # RIMARY SCRIPT: Runs TruthfulQA, applies mitigation, and saves results.
 
-├── utils.py          # Helpers: Loads .pt files or generates mock vectors
+├── main.py             # TEST SCRIPT: A simple sanity check to run one prompt and verify hooks.
 
-└── README.md         # Project documentation
+├── mitigation.py       # CORE LOGIC: Contains the `TSVMitigator` class and the 3 steering strategies.
+
+├── utils.py            # UTILITIES: Handles loading the `.pt` vectors (or generating mock data).
+
+├── README.md           # DOCS: This file.
+
+└── tsv_vectors_layer_X.pt  # DATA: (External) The saved vectors from the Detection team.
 
 
 ## Integration with Detection Module
